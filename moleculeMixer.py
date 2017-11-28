@@ -55,6 +55,10 @@ def parseCoord(File):
         
         #increamnet atom count
         data["atomNumber"] += 1
+	
+	#check for stray spaces
+	if(len(line2) > 4):
+	    line2.pop(0)
 
         #increment midpoint
         for dim in range(3):
@@ -104,6 +108,11 @@ def newPosition(data, newMidpoint):
        
         line2 = line.split("\n")[0].split(space)
         print(line2[0])  
+       	
+	#check for stray spaces
+	if(len(line2) > 4):
+	    line2.pop(0)
+	
         #calculate new coord for each atom using delta
         newCoord = [ str(float(line2[dim]) + delta[dim]) for dim in range(3) ]
         
