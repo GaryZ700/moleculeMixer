@@ -13,9 +13,13 @@ space = "    "
 #start argument parser
 parser = argparse.ArgumentParser()
 
+#coord file is used in calculating random coords of molecule to append
+#coord2 file is coord file to which molecule becomes appended to 
+
 parser.add_argument("-c", "--coord", metavar="coord", type=str, default="coord")
-parser.add_argument("-m", "--molecule", metavar="molecule", type=str, default="molecule")
+parser.add_argument("-c2", "--coord2", metavar="coord2", type=str, default="none")
 #parser.add_argument("-r", "--random", metavar="random", type=bool, default=True)
+parser.add_argument("-m", "--molecule", metavar="molecule", type=str, default="molecule")
 parser.add_argument("-d", "--distance", metavar="distance", type=float, default=nan)
 parser.add_argument("-mxd", "--maxDistance", metavar="maxDistance", type=float, default=100)
 parser.add_argument("-mnd", "--minDistance", metavar="minDistance", type=float, default=0)
@@ -23,6 +27,12 @@ parser.add_argument("-i", "--instances", metavar="instances", type=int, default=
 parser.add_argument("-f", "--fileType", metavar="fileType", type=str, default="tm")
 
 args = parser.parse_args()
+
+#check if coord2 is being used
+if(args.coord2 == "none"):
+    #if not, make coord2 equal to coord
+    args.coord2 = args.coord
+
 
 #open main coordinate file
 coord = open(args.coord,"r+")
@@ -177,20 +187,19 @@ def createNewCoord(linesToAppend):
         #create xyz style coord file
         
         #get number of atoms in file
-        atomNumber = int(os.popen("head -n 1 " + args.coord).read())
+        atomNumber = int(os.popen("head -n 1 " + args.coord2).read())
 
         #increment atom number by number of atoms to append to main molecule file
         header = str(atomNumber + len(linesToAppend.split("\n")) - 1) + "\n\n" 
 
         #get baseAtoms that will be added to new file from original coord file
-        baseAtoms = os.popen("tail -n +3 " + args.coord).read()
+        baseAtoms = os.popen("tail -n +3 " + args.coord2).read()
 
         newCoord = header + baseAtoms + linesToAppend[1:]
     
-        #create new coord 
-        os.popen("echo '" + newCoord + "' > new" + args.coord)
+    #create new coord 
+    os.popen("echo '" + newCoord + "' > new" + args.coord2)
         
-
 #Start of main code###########################################
 #get coord and molecule data
 coordData = parseCoord(coord)
