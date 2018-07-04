@@ -28,17 +28,24 @@ parser.add_argument("-f", "--fileType", metavar="fileType", type=str, default="t
 
 args = parser.parse_args()
 
-#check if coord2 is being used
-if(args.coord2 == "none"):
-    #if not, make coord2 equal to coord
-    args.coord2 = args.coord
-
-
 #open main coordinate file
 coord = open(args.coord,"r+")
 
 #open molecule to append to file
 molecule = open(args.molecule, "r")
+
+#check if coord2 is being used
+if(args.coord2 == "none"):
+    #if not, make coord2 equal to coord
+    args.coord2 = args.coord
+
+    #and set masterStructure equal to coord
+    masterStructure = coord
+
+else:
+    #open coord2 file to masterStructure
+    masterStructure = open(args.coord2, "r+")
+
 
 #Start function declarations###########################################
 def tmParser(line):
@@ -49,7 +56,7 @@ def tmParser(line):
         return "NAN"
 
     line2 = line.split("\n")[0].split(space)
-    print(line2)
+    #print(line2)
     
     #check for stray spaces
     if(len(line2) > 4):
@@ -79,7 +86,8 @@ def parseCoord(File):
             "midpoint":[0.0,0.0,0.0],
             "atomNumber": 0,
             "file":File,
-            "lineCount":0
+            "lineCount":0,
+            "coords":[]
 
             }
 
@@ -98,7 +106,7 @@ def parseCoord(File):
         if(line2 == "NAN"):
             continue
 
-        print(line2)
+        #print(line2)
 
         #increamnet atom count
         data["atomNumber"] += 1
@@ -107,13 +115,16 @@ def parseCoord(File):
         for dim in range(3):
             data["midpoint"][dim] += float(line2[dim])
 
+        #append xyz coord data to data structure
+        data["coords"].append(line2)
+
     #finish midpoint calculation by dividing by the total number of atoms
     data["midpoint"] = [ mp/data["atomNumber"] for mp in data["midpoint"] ]
 
     return data
 
 ############################################
-def RSI(coordData, moleculeData, args):
+def RSI(coordData, moleculeData, comparison):
     #uses a sphere to randomly integrate one molecule into another coord file
     
     #init variables for calculation
@@ -129,16 +140,16 @@ def RSI(coordData, moleculeData, args):
     Y = (hypotenuse * math.sin(theta)) + coordData["midpoint"][1]
     Z = (hypotenuse * math.sin(theta) * math.cos(theta)) + coordData["midpoint"][2]
 
-    newLines = newPosition(moleculeData, [X,Y,Z])
+    newLines = newPosition(moleculeData, [X,Y,Z], comparison)
    
-    print("newlines")
-    print(newLines)
-    print("$$$$$$$$$$$$$$$$4")
+    #print("newlines")
+    #print(newLines)
+    #print("$$$$$$$$$$$$$$$$4")
 
     return newLines
 
 ############################################
-def newPosition(data, newMidpoint):
+def newPosition(data, newMidpoint, comparison):
 
     newLines = ""
     data["file"].seek(0)
@@ -147,7 +158,7 @@ def newPosition(data, newMidpoint):
 
     #calculate delta for each atom in molecule
     delta = [ newMidpoint[dim] - data["midpoint"][dim] for dim in range(3) ]
-    print(0)
+    
     #iterate overl all lines in coord file
     for line in data["file"]:
             
@@ -163,18 +174,40 @@ def newPosition(data, newMidpoint):
         #calculate new coord for each atom using delta
         newCoord = [ str(float(line2[dim]) + delta[dim]) for dim in range(3) ]
         
-        print(newCoord)
-        print("newCoord")
+        #run check to see if new coord overlaps with another atom
+        overlapCheck(newCoord, comparison)
+
+        #print(newCoord)
+        #print("newCoord")
 
         #convert newCoord to TM coord friendly data
         if(args.fileType.lower() == "tm"):
             newLines += "\n" + space + newCoord[0] + space + newCoord[1] + space + newCoord[2] + space + line2[3]
         else:
             newLines += "\n" + line2[3] + space + newCoord[0] + space + newCoord[1] + space + newCoord[1]
-    print("testtestmnewlines")
-    print(newLines[:1])
-    print("!!!!!!!!!!!!!!!!")
+    #print("testtestmnewlines")
+    #print(newLines[:1])
+    #print("!!!!!!!!!!!!!!!!")
     return newLines
+
+############################################
+#check if new molecule overlaps another molecule
+#takes position of molecule, along with data of all atoms in coord
+def overlapCheck(position, coords):
+
+    boundry = 0.5
+
+    #check through all 3 dims
+    for dim in range(3):
+        #go through all atoms in data
+        for atom in coords:
+
+            #check if atom is further away from atom with boundry added
+            if( position[dim] : < (float(atom[dim]) + boundry) ):
+                #if position is less than boundry max, check boundry min
+                if(position[dim] > (float(atom[dim]) - boundry) ):
+                    print("coord failed to pass overlap test")
+
 
 ############################################
 #creates new coord file in either xyz or TM format
@@ -204,9 +237,11 @@ def createNewCoord(linesToAppend):
 #get coord and molecule data
 coordData = parseCoord(coord)
 moleculeData = parseCoord(molecule)
+masterStructureData = parseCoord(masterStructure)
 
-print(coordData["midpoint"])
-print(moleculeData["midpoint"])
+
+#print(coordData["midpoint"])
+#print(moleculeData["midpoint"])
 
 #init variable to hold strings to append to file
 linesToAppend = ""
@@ -214,15 +249,17 @@ linesToAppend = ""
 #place requested number of molecules in random positions at random distances using given constraints
 #uses random spherical integration method
 for i in range(args.instances):
-    linesToAppend += RSI(coordData, moleculeData, args)
+    linesToAppend += RSI(coordData, moleculeData, masterStructureData["coords"])
 
 #append new lines to new coord file
 #delete last line in coord file
 #os.popen("head -n-1 " + args.coord + " > " + "new" + args.coord)
 
-print(linesToAppend)
-print("LINESTOAPPEND")
+#print(linesToAppend)
+#print("LINESTOAPPEND")
 
 #create new coord file with two molecules "mixed" together
 createNewCoord(linesToAppend)
 
+
+#print(coordData)
