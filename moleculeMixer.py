@@ -166,6 +166,31 @@ def newPosition(data, newMidpoint):
     print("!!!!!!!!!!!!!!!!")
     return newLines
 
+############################################
+#creates new coord file in either xyz or TM format
+def createNewCoord(linesToAppend):
+
+    if(args.fileType.lower() == "tm"):
+        print("creating tm style new coord file")
+
+    else:
+        #create xyz style coord file
+        
+        #get number of atoms in file
+        atomNumber = int(os.popen("head -n 1 " + args.coord).read())
+
+        #increment atom number by number of atoms to append to main molecule file
+        header = str(atomNumber + len(linesToAppend.split("\n")) - 1) + "\n\n" 
+
+        #get baseAtoms that will be added to new file from original coord file
+        baseAtoms = os.popen("tail -n +3 " + args.coord).read()
+
+        newCoord = header + baseAtoms + linesToAppend[1:]
+    
+        #create new coord 
+        os.popen("echo '" + newCoord + "' > new" + args.coord)
+        
+
 #Start of main code###########################################
 #get coord and molecule data
 coordData = parseCoord(coord)
@@ -190,13 +215,5 @@ print(linesToAppend)
 print("LINESTOAPPEND")
 
 #create new coord file with two molecules "mixed" together
-#createNewCoord(linesToAppend)
-
-#append new lines to new coord file
-os.popen('echo "' + linesToAppend + '" >> new' + args.coord)
-#os.popen("echo '$end\n' >> new" + args.coord)
-
-#close open files
-coordData["file"].close()
-moleculeData["file"].close()
+createNewCoord(linesToAppend)
 
